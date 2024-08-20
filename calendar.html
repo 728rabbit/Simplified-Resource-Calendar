@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simplified Resource Calendar</title>
+</head>
+<body>
+<div style="padding:20px;">
+    <div id="icalendar">
+        <div class="fixed-header"></div>
+        <div class="fixed-left"></div>
+        <div class="slots"></div>
+    </div>
+</div>
+<script>
+class iCalendar {
+    constructor(options = {}) {
+        this.startHm = options.startHm || 800;
+        this.endHm = options.endHm || 2200;
+        this.interval = options.interval || 5;
+        this.maxHeight = options.maxHeight || 360;
+    }
+
+    initialize(resources, events) {
+        this.resources = resources;
+        this.events = events;
+        
+        const calendar = document.getElementById('icalendar');
+        calendar.style.position = 'relative';
+        calendar.style.border = '1px solid #e6e6e6';
+        calendar.style.boxSizing = 'border-box';
+        calendar.style.overflow = 'hidden';
+
+        this.fixedHeader = calendar.querySelector('.fixed-header');
+        this.fixedLeft = calendar.querySelector('.fixed-left');
+        this.slots = calendar.querySelector('.slots');
+
+        this.applyStyles();
+        this.setHeader();
+        this.setLeft();
+        this.setSlots();
+        this.syncHeaderAndLeft();
+        this.drawEvents();
+    }
+
+    applyStyles() {
+        // Apply styles to fixed-header
+        this.fixedHeader.style.position = 'absolute';
+        this.fixedHeader.style.top = '0px';
+        this.fixedHeader.style.left = '0px';
+        this.fixedHeader.style.width = '100%';
+        this.fixedHeader.style.boxSizing = 'border-box';
+        this.fixedHeader.style.overflowX = 'hidden';
+        this.fixedHeader.style.overflowY = 'scroll';
+        this.fixedHeader.style.zIndex = '3';
+
+        // Apply styles to fixed-left
+        this.fixedLeft.style.position = 'absolute';
+        this.fixedLeft.style.top = '40px';
+        this.fixedLeft.style.left = '0px';
+        this.fixedLeft.style.maxHeight = this.maxHeight + 'px';
+        this.fixedLeft.style.boxSizing = 'border-box';
+        this.fixedLeft.style.zIndex = '2';
+
+        // Apply styles to slots
+        this.slots.style.position = 'relative';
+        this.slots.style.maxHeight = this.maxHeight + 'px';
+        this.slots.style.marginTop = '40px';
+        this.slots.style.boxSizing = 'border-box';
+        this.slots.style.overflowX = 'auto';
+        this.slots.style.overflowY = 'scroll';
+    }
+
+    setHeader() {
+        const calendarTable = document.createElement('table');
+        calendarTable.style.borderCollapse = 'collapse';
+        calendarTable.style.width = '100%';
+        calendarTable.style.fontSize = '13px';
+        calendarTable.style.boxSizing = 'border-box';
+        const calendarThead = document.createElement('thead');
+        const calendarRow = document.createElement('tr');
+
+        if(this.resources) {
+            this.resources.forEach((resource, index) => {
+                let calendarCol = null;
+
+                if (index === 0) {
+                    calendarCol = document.createElement('th');
+                    calendarCol.style.position = 'relative';
+                    calendarCol.style.background = '#f6f6f6';
+                    calendarCol.style.width = '60px';
+                    calendarCol.style.minWidth = '60px';
+                    calendarCol.style.height = '40px';
+                    calendarCol.style.padding = '4px';
+                    calendarCol.style.border = '2px solid #e6e6e6';
+                    calendarCol.style.boxSizing = 'border-box';
+                    calendarCol.innerHTML = '<strong><span>&nbsp;</span></strong>';
+                    calendarRow.appendChild(calendarCol);
+                }
+
+                calendarCol = document.createElement('th');
+                calendarCol.style.position = 'relative';
+                calendarCol.style.background = '#f6f6f6';
+                calendarCol.style.width = `calc((100% - 60px) / ${this.resources.length})`;
+                calendarCol.style.minWidth = '180px';
+                calendarCol.style.height = '40px';
+                calendarCol.style.padding = '4px';
+                calendarCol.style.border = '2px solid #e6e6e6';
+                calendarCol.style.boxSizing = 'border-box';
+                calendarCol.innerHTML = `<strong><span>${resource.name}</span></strong>`;
+                calendarRow.appendChild(calendarCol);
+            });
+        }
+
+        calendarThead.appendChild(calendarRow);
+        calendarTable.appendChild(calendarThead);
+        this.fixedHeader.appendChild(calendarTable);
+    }
+
+    setLeft() {
+        const calendarTable = document.createElement('table');
+        calendarTable.style.borderCollapse = 'collapse';
+        calendarTable.style.fontSize = '13px';
+        calendarTable.style.boxSizing = 'border-box';
+        const calendarThead = document.createElement('thead');
+        let currentTime = this.startHm;
+
+        while (currentTime <= this.endHm) {
+            const calendarRow = document.createElement('tr');
+            const calendarCol = document.createElement('th');
+            calendarCol.style.position = 'relative';
+            calendarCol.style.background = '#f6f6f6';
+            calendarCol.style.width = '60px';
+            calendarCol.style.height = '30px';
+            calendarCol.style.padding = '4px';
+            calendarCol.style.border = '2px solid #e6e6e6';
+            calendarCol.style.boxSizing = 'border-box';
+            const timeString = currentTime.toString().padStart(4, '0');
+            calendarCol.innerHTML = `<span>${timeString.slice(0, 2)}:${timeString.slice(2)}</span>`;
+
+            calendarRow.appendChild(calendarCol);
+            calendarThead.appendChild(calendarRow);
+            currentTime += this.interval;
+        }
+
+        calendarTable.appendChild(calendarThead);
+        this.fixedLeft.appendChild(calendarTable);
+    }
+
+    setSlots() {
+        const calendarTable = document.createElement('table');
+        calendarTable.style.borderCollapse = 'collapse';
+        calendarTable.style.width = '100%';
+        calendarTable.style.fontSize = '12px';
+        calendarTable.style.boxSizing = 'border-box';
+        const calendarTbody = document.createElement('tbody');
+        let currentTime = this.startHm;
+
+        while (currentTime <= this.endHm) {
+            const calendarRow = document.createElement('tr');
+
+            if(this.resources) {
+                this.resources.forEach((resource, index) => {
+                    let calendarCol = null;
+
+                    if (index === 0) {
+                        calendarCol = document.createElement('td');
+                        calendarCol.style.position = 'relative';
+                        calendarCol.style.background = '#f6f6f6';
+                        calendarCol.style.width = '60px';
+                        calendarCol.style.minWidth = '60px';
+                        calendarCol.style.height = '30px';
+                        calendarCol.style.padding = '4px';
+                        calendarCol.style.border = '2px solid #e6e6e6';
+                        calendarCol.style.boxSizing = 'border-box';
+                        calendarRow.appendChild(calendarCol);
+                    }
+
+                    calendarCol = document.createElement('td');
+                    calendarCol.style.position = 'relative';
+                    calendarCol.style.background = '#fff';
+                    calendarCol.style.width = `calc((100% - 60px) / ${this.resources.length})`;
+                    calendarCol.style.minWidth = '180px';
+                    calendarCol.style.height = '30px';
+                    calendarCol.style.padding = '4px';
+                    calendarCol.style.border = '2px solid #e6e6e6';
+                    calendarCol.style.boxSizing = 'border-box';
+                    calendarCol.setAttribute('data-rsindex', `${resource.id}@${currentTime}`);
+                    calendarRow.appendChild(calendarCol);
+                });
+            }
+
+            calendarTbody.appendChild(calendarRow);
+            currentTime += this.interval;
+        }
+
+        calendarTable.appendChild(calendarTbody);
+        this.slots.appendChild(calendarTable);
+    }
+
+    syncHeaderAndLeft() {
+        this.slots.addEventListener('scroll', () => {
+            this.fixedHeader.querySelector('table').style.transform = `translateX(${-this.slots.scrollLeft}px)`;
+            this.fixedLeft.querySelector('table').style.transform = `translateY(${-this.slots.scrollTop}px)`;
+        });
+    }
+
+    drawEvents(events) {
+        this.events = events;
+        this.slots.querySelectorAll('.ievent').forEach(event => event.remove());
+
+        if(this.events) {
+            this.events.forEach(event => {
+                const findMatchSlot = this.slots.querySelector(`[data-rsindex="${event.resourceId}@${event.startHm}"]`);
+                if (findMatchSlot) {
+                    const blockCount = findMatchSlot.querySelectorAll('.ievent').length;
+
+                    const block = document.createElement('div');
+                    block.className = 'ievent';
+                    block.style.position = 'absolute';
+                    block.style.background = event.background || '#3788d8';
+                    block.style.top = '0px';
+                    block.style.left = `${blockCount * 40}px`;
+                    block.style.width = blockCount > 0 ? `calc(100% - ${blockCount * 40}px)` : '100%';
+                    block.style.height = `${((Math.abs(event.startHm - event.endHm) / this.interval) + 1) * 30}px`;
+                    block.style.padding = '8px';
+                    block.style.border = '1px solid #fff';
+                    block.style.borderRadius = '8px';
+                    block.style.boxShadow = '0px 0px 8px rgba(0,0,0,0.4)';
+                    block.style.boxSizing = 'border-box';
+                    block.style.overflow = 'hidden';
+                    block.style.opacity = '0.95';
+                    block.style.zIndex = 1;
+                    block.innerHTML = `<div>${event.content}</div>`;
+                    findMatchSlot.appendChild(block);
+                }
+            });
+        }
+    }
+}
+
+// Usage Example
+const resources = [
+    { id: 1, name: '會議室 A' },
+    { id: 2, name: '會議室 B' },
+    { id: 3, name: '會議室 C' },
+    { id: 4, name: '會議室 D' },
+    { id: 5, name: '會議室 E' },
+];
+
+const events = [
+    { resourceId: 1, startHm: 815, endHm: 950, content: '08:15 ~ 09:50', background: '#FFA726' },
+    { resourceId: 2, startHm: 1000, endHm: 2200, content: '10:00 ~ 22:00', background: '#2A9D8F' },
+    { resourceId: 3, startHm: 1330, endHm: 1430, content: '13:30 ~ 14:30' },
+    { resourceId: 1, startHm: 915, endHm: 1045, content: '09:15 ~ 10:45', background: '#4C7B96' },
+    { resourceId: 2, startHm: 1000, endHm: 1430, content: '10:00 ~ 14:30' },
+];
+const icalendar = new iCalendar({ startHm: 800, endHm: 2200, interval: 5, maxHeight: 480 });
+icalendar.initialize(resources);
+icalendar.drawEvents(events);
+</script>
+</body>
+</html>
