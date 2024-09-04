@@ -227,9 +227,9 @@ class iCalendar {
                 this.resources.forEach((resource, index) => {
                     if (this.displayMode === 'week') {
                         const startOfWeek = new Date(this.displayDate);
-                        for (let i = 0; i < 7; i++) {
+                        for (let w = 0; w < 7; w++) {
                             const day = new Date(startOfWeek);
-                            day.setDate(startOfWeek.getDate() + i);
+                            day.setDate(startOfWeek.getDate() + w);
                             const dayCell = this.createElement('th', {
                                 position: 'relative',
                                 background: '#f6f6f6',
@@ -329,9 +329,11 @@ class iCalendar {
             const row = this.createElement('tr');
             if (this.resources) {
                 this.resources.forEach((resource, index) => {
-                    let currentDate = new Date(this.displayDate);
+                    const startOfWeek = new Date(this.displayDate);
                     if (this.displayMode === 'week') {
                         for (let w = 0; w < 7; w++) {
+                            const day = new Date(startOfWeek);
+                            day.setDate(startOfWeek.getDate() + w);
                             const cell = this.createElement('td', {
                                 position: 'relative',
                                 background: '#fff',
@@ -342,9 +344,8 @@ class iCalendar {
                                 border: '1px solid #e6e6e6',
                                 boxSizing: 'border-box',
                             });
-                            cell.setAttribute('data-timeslot', `${resource.id}_` + this.getYmd(currentDate) + `_${currentTime}`);
+                            cell.setAttribute('data-timeslot', `${resource.id}_` + this.getYmd(day) + `_${currentTime}`);
                             row.appendChild(cell);
-                            currentDate.setDate(currentDate.getDate() + 1);
                         }
                     } else {
                         const cell = this.createElement('td', {
@@ -357,7 +358,7 @@ class iCalendar {
                             border: '1px solid #e6e6e6',
                             boxSizing: 'border-box',
                         });
-                        cell.setAttribute('data-timeslot', `${resource.id}_` + this.getYmd(currentDate) + `_${currentTime}`);
+                        cell.setAttribute('data-timeslot', `${resource.id}_` + this.getYmd(startOfWeek) + `_${currentTime}`);
                         row.appendChild(cell);
                     }
                 });
@@ -386,14 +387,14 @@ class iCalendar {
         if (events) {
             events.forEach(event => {
                 // Find the matching slot using the event's resourceId, targetDate, and startHm
-                const findMatchSlot = this.timeSlots.querySelector(`[data-timeslot="${event.resourceId}_${event.targetDate}_${event.startHm}"]`);
+                const findMatchSlot = this.timeSlots.querySelector(`[data-timeslot="${event.resourceId}_${event.targetDate}_${Math.max(this.startHm, event.startHm)}"]`);
                 if (findMatchSlot) {
                     // Count how many blocks are already present in the slot to determine the position
                     const blockCount = findMatchSlot.querySelectorAll('.ievent').length;
                     
                     // Convert startHm and endHm to minutes since midnight
-                    const startMinutes = Math.floor(event.startHm / 100) * 60 + (event.startHm % 100);
-                    const endMinutes = Math.floor(event.endHm / 100) * 60 + (event.endHm % 100);
+                    const startMinutes = Math.floor(Math.max(this.startHm, event.startHm) / 100) * 60 + (Math.max(this.startHm, event.startHm) % 100);
+                    const endMinutes = Math.floor(Math.min(this.endHm, event.endHm) / 100) * 60 + (Math.min(this.endHm, event.endHm) % 100);
 
                     // Calculate the duration in minutes
                     const durationMinutes = endMinutes - startMinutes;
@@ -405,7 +406,7 @@ class iCalendar {
                     const block = this.createElement('div', {
                         position: 'absolute',
                         background: event.background || '#3788d8',
-                        top: '60px',
+                        top: '0px',
                         left: `${blockCount * 40}px`,
                         right: '0px',
                         height: `${height}px`,
@@ -488,9 +489,9 @@ const resources = [
 ];
 
 const events = [
-    { resourceId: 1, targetDate: '2024-09-03', startHm: 815, endHm: 950, content: '08:15 ~ 09:50', background: '#FFA726' },
+    { resourceId: 1, targetDate: '2024-09-03', startHm: 715, endHm: 950, content: '07:15 ~ 09:50', background: '#FFA726' },
     { resourceId: 1, targetDate: '2024-09-04', startHm: 815, endHm: 950, content: '08:15 ~ 09:50', background: '#FFA156' },
-    { resourceId: 2, targetDate: '2024-09-03', startHm: 1000, endHm: 2200, content: '10:00 ~ 22:00', background: '#2A9D8F' },
+    { resourceId: 2, targetDate: '2024-09-03', startHm: 1000, endHm: 2250, content: '10:00 ~ 22:50', background: '#2A9D8F' },
     { resourceId: 3, targetDate: '2024-09-03', startHm: 1330, endHm: 1430, content: '13:30 ~ 14:30' },
     { resourceId: 1, targetDate: '2024-09-03', startHm: 915, endHm: 1045, content: '09:15 ~ 10:45', background: '#4C7B96' },
     { resourceId: 2, targetDate: '2024-09-03', startHm: 1000, endHm: 1430, content: '10:00 ~ 14:30' },
