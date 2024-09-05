@@ -8,51 +8,106 @@
 <body>
 <div style="padding:20px;">
     <div id="icalendar">
+        <div class="fixed-corner"></div>
     </div>
 </div>
 <script>
 class iCalendar {
     constructor(config = {}) {
         this.elementID = config.elementID || 'icalendar';
+        this.lang = config.lang || 'en';
         this.displayMode = config.displayMode || 'day';
         this.displayDate = (new Date(config.date || new Date())).toLocaleString('en-US', { timeZone: 'Asia/Hong_Kong' });
         this.startHm = config.startHm || 800;
         this.endHm = config.endHm || 2200;
         this.interval = config.interval || 5;
         this.maxHeight = config.maxHeight || 360;
-        this.lang = config.lang || 'en';
+        
+        this.resources_url = config.resources || false;
+        this.events_url = config.events || false;
+        this.eventsTemplate = config.eventsTemplate || false;
+        this.eventsClick = config.eventsClick || false;
     }
 
     init(resources, events) {
+        this.selfObj = document.getElementById(this.elementID);
+        this.selfObj.style.position = 'relative';
+        this.selfObj.style.fontFamily = 'Arial, sans-serif';
+        this.selfObj.style.fontSize = '13px';
+        this.selfObj.style.border = '1px solid #e6e6e6';
+        this.selfObj.style.boxSizing = 'border-box';
+        this.selfObj.style.overflow = 'hidden';
+        ['.fixed-corner', '.fixed-header', '.fixed-left', '.timeSlots'].forEach(selector => {
+            this.selfObj.querySelectorAll(selector).forEach(el => el.remove());
+        });
+
         this.resources = resources;
         this.events = events;
-
-        const calendar = document.getElementById(this.elementID);
-        this.setupElement(calendar);
-        this.renderControls(calendar);
-        this.renderBody(calendar);
-
+        
+        if(this.resources_url) {
+            this.fetchData(this.resources_url, (data) => {
+                this.resources = data;
+                if(this.events_url) {
+                    this.fetchData(this.events_url, (data) => {
+                        this.events = data;
+                        this.setupElements();
+                    });
+                }
+            });
+        }
+        else if(this.events_url) {
+            this.fetchData(this.events_url, (data) => {
+                this.events = data;
+                this.setupElements();
+            });
+        }
+        else {
+            this.setupElements();
+        }
+    }
+    
+    refresh(resources, events) {
+        document.getElementById('icalendar-showdate').innerHTML = this.getDisplayDate();
+        
+        this.resources = resources;
+        this.events = events;
+        
+        if(this.resources_url) {
+            this.fetchData(this.resources_url, (data) => {
+                this.resources = data;
+                if(this.events_url) {
+                    this.fetchData(this.events_url, (data) => {
+                        this.events = data;
+                        this.setupElements(true);
+                    });
+                }
+            });
+        }
+        else if(this.events_url) {
+            this.fetchData(this.events_url, (data) => {
+                this.events = data;
+                this.setupElements(true);
+            });
+        }
+        else {
+            this.setupElements(true);
+        }
+    }
+    
+    setupElements(renew) {
+        if(!renew) {
+            this.renderControls();
+            this.renderBody();
+            this.syncScroll();
+        }
+        
         this.setHeader();
         this.setLeft();
         this.setSlots();
-        this.drawEvents(events);
-        this.syncScroll();
+        this.drawEvents(this.events);
     }
 
-    setupElement(calendar) {
-        calendar.style.position = 'relative';
-        calendar.style.fontFamily = 'Arial, sans-serif';
-        calendar.style.fontSize = '13px';
-        calendar.style.border = '1px solid #e6e6e6';
-        calendar.style.boxSizing = 'border-box';
-        calendar.style.overflow = 'hidden';
-        // Clear existing elements
-        ['.fixed-corner', '.fixed-header', '.fixed-left', '.timeSlots'].forEach(selector => {
-            calendar.querySelectorAll(selector).forEach(el => el.remove());
-        });
-    }
-
-    renderControls(calendar) {
+    renderControls() {
         const controlsTable = this.createElement('table', { width: '100%' });
         const row = this.createElement('tr');
         const leftCell = this.createControlsLeftCell();
@@ -70,20 +125,19 @@ class iCalendar {
         });
 
         controlsContainer.appendChild(controlsTable);
-        calendar.appendChild(controlsContainer);
+        this.selfObj.appendChild(controlsContainer);
     }
 
     createControlsLeftCell() {
         const cell = this.createElement('td', { width: '30%', textAlign: 'left' });
         const prevButton = this.createControlButton(this.lang === 'zh' ? '前一個' : 'Prev', () => this.changeDate(-1));
         const nextButton = this.createControlButton(this.lang === 'zh' ? '後一個' : 'Next', () => this.changeDate(1));
-
         cell.append(prevButton, nextButton);
         return cell;
     }
 
     createControlsCenterCell() {
-        const cell = this.createElement('td', { textAlign: 'center' });
+        const cell = this.createElement('td', { fontSize: '16px', textAlign: 'center' });
         cell.innerHTML = `<strong id="icalendar-showdate">${this.getDisplayDate()}</strong>`;
         return cell;
     }
@@ -95,12 +149,10 @@ class iCalendar {
             { text: this.lang === 'zh' ? '週' : 'Week', mode: 'week' },
             { text: this.lang === 'zh' ? '日' : 'Day', mode: 'day' }
         ];
-
         modes.forEach(({ text, mode }) => {
             const button = this.createControlButton(text, () => this.changeMode(mode));
             cell.appendChild(button);
         });
-
         return cell;
     }
 
@@ -125,7 +177,12 @@ class iCalendar {
 
     changeDate(offset) {
         let dateObj = new Date(this.displayDate);
-        dateObj.setDate(dateObj.getDate() + offset);
+        if (this.displayMode === 'week' || this.displayMode === 'day') {
+            dateObj.setDate(dateObj.getDate() + offset);
+        }
+        else {
+            dateObj = this.getPrevNextMonth(this.displayDate, offset)
+        }
         this.displayDate = dateObj.toLocaleString('en-US', { timeZone: 'Asia/Hong_Kong' });
         this.refresh();
     }
@@ -147,7 +204,7 @@ class iCalendar {
         }
     }
     
-    renderBody(calendar) {
+    renderBody() {
         const body = this.createElement('div', {
             position: 'relative',
             background: '#f6f6f6',
@@ -155,7 +212,7 @@ class iCalendar {
             overflow: 'hidden'
         }, 'details');
 
-        const fixedCorner = this.createElement('div', 
+        this.fixedCorner = this.createElement('div', 
         {
             position: 'absolute', 
             background: '#f6f6f6', 
@@ -165,10 +222,10 @@ class iCalendar {
             height: '47px', 
             border: '1px solid #e6e6e6', 
             boxSizing: 'border-box',
-            zIndex: '3'
+            zIndex: '5'
         }, 'fixedCorner');
         
-        const fixedHeader = this.createElement('div', 
+        this.fixedHeader = this.createElement('div', 
         {
             position: 'absolute', 
             top: '0px', 
@@ -176,19 +233,19 @@ class iCalendar {
             right: '0px',
             overflowX: 'hidden', 
             overflowY: 'scroll', 
-            zIndex: '2'
+            zIndex: '4'
         }, 'fixedHeader');
     
-        const fixedLeft = this.createElement('div', 
+        this.fixedLeft = this.createElement('div', 
         {
             position: 'absolute', 
             top: '46px', 
             left: '0px', 
             maxHeight: `${this.maxHeight}px`, 
-            zIndex: '1'
+            zIndex: '3'
         }, 'fixedLeft');
     
-        const timeSlots = this.createElement('div', 
+        this.timeSlots= this.createElement('div', 
         {
             position: 'relative', 
             background: '#fff', 
@@ -199,13 +256,8 @@ class iCalendar {
             overflowY: 'scroll'
         }, 'timeSlots');
 
-        body.append(fixedCorner, fixedHeader, fixedLeft, timeSlots);
-        calendar.appendChild(body);
-
-        this.fixedCorner = fixedCorner;
-        this.fixedHeader = fixedHeader;
-        this.fixedLeft = fixedLeft;
-        this.timeSlots = timeSlots;
+        body.append(this.fixedCorner, this.fixedHeader, this.fixedLeft, this.timeSlots);
+        this.selfObj.appendChild(body);
     }
 
     createElement(tag, styles = {}, className = '') {
@@ -218,7 +270,9 @@ class iCalendar {
     }
 
     setHeader() {
-        // Generate the title of the calendar based on the current display mode (year, month, day)
+        this.fixedCorner.style.display = ((this.displayMode === 'week' || this.displayMode === 'day'))? 'block' : 'none';
+        this.fixedHeader.style.left = ((this.displayMode === 'week' || this.displayMode === 'day'))? '61px' : '0px';
+        
         this.fixedHeader.innerHTML = '';
         if (this.displayMode === 'week' || this.displayMode === 'day') {
             if(this.resources) {
@@ -292,6 +346,7 @@ class iCalendar {
     }
 
     setLeft() {
+        this.fixedLeft.style.display = ((this.displayMode === 'week' || this.displayMode === 'day'))? 'block' : 'none';
         this.fixedLeft.innerHTML = '';
         const leftTable = this.createElement('table', { width: '100%', borderCollapse: 'collapse' }); 
         let currentTime = this.startHm;
@@ -321,19 +376,36 @@ class iCalendar {
     }
 
     setSlots() {
+        this.timeSlots.style.marginLeft = ((this.displayMode === 'week' || this.displayMode === 'day'))? '61px' : '0px';
+        this.timeSlots.style.maxHeight = ((this.displayMode === 'week' || this.displayMode === 'day'))? (this.maxHeight+'px') : 'none';
         this.timeSlots.innerHTML = '';
-        const timeSlotsTable = this.createElement('table', { width: '100%', borderCollapse: 'collapse' });
         
-        let currentTime = this.startHm;
-        while (currentTime <= this.endHm) {
-            const row = this.createElement('tr');
-            if (this.resources) {
-                this.resources.forEach((resource, index) => {
-                    const startOfWeek = new Date(this.displayDate);
-                    if (this.displayMode === 'week') {
-                        for (let w = 0; w < 7; w++) {
-                            const day = new Date(startOfWeek);
-                            day.setDate(startOfWeek.getDate() + w);
+        if (this.displayMode === 'week' || this.displayMode === 'day') {
+            const timeSlotsTable = this.createElement('table', { width: '100%', borderCollapse: 'collapse' });
+            let currentTime = this.startHm;
+            while (currentTime <= this.endHm) {
+                const row = this.createElement('tr');
+                if (this.resources) {
+                    this.resources.forEach((resource, index) => {
+                        const startOfWeek = new Date(this.displayDate);
+                        if (this.displayMode === 'week') {
+                            for (let w = 0; w < 7; w++) {
+                                const day = new Date(startOfWeek);
+                                day.setDate(startOfWeek.getDate() + w);
+                                const cell = this.createElement('td', {
+                                    position: 'relative',
+                                    background: '#fff',
+                                    width: `calc((100% - 60px) / ${this.resources.length})`,
+                                    minWidth: '180px',
+                                    height: '30px',
+                                    padding: '4px',
+                                    border: '1px solid #e6e6e6',
+                                    boxSizing: 'border-box',
+                                });
+                                cell.setAttribute('data-timeslot', `${resource.id}_` + this.getYmd(day) + `_${currentTime}`);
+                                row.appendChild(cell);
+                            }
+                        } else {
                             const cell = this.createElement('td', {
                                 position: 'relative',
                                 background: '#fff',
@@ -342,33 +414,83 @@ class iCalendar {
                                 height: '30px',
                                 padding: '4px',
                                 border: '1px solid #e6e6e6',
-                                boxSizing: 'border-box',
+                                boxSizing: 'border-box'
                             });
-                            cell.setAttribute('data-timeslot', `${resource.id}_` + this.getYmd(day) + `_${currentTime}`);
+                            cell.setAttribute('data-timeslot', `${resource.id}_` + this.getYmd(startOfWeek) + `_${currentTime}`);
                             row.appendChild(cell);
                         }
-                    } else {
-                        const cell = this.createElement('td', {
-                            position: 'relative',
-                            background: '#fff',
-                            width: `calc((100% - 60px) / ${this.resources.length})`,
-                            minWidth: '180px',
-                            height: '30px',
-                            padding: '4px',
-                            border: '1px solid #e6e6e6',
-                            boxSizing: 'border-box',
-                        });
-                        cell.setAttribute('data-timeslot', `${resource.id}_` + this.getYmd(startOfWeek) + `_${currentTime}`);
-                        row.appendChild(cell);
-                    }
-                });
+                    });
+                }
+
+                timeSlotsTable.appendChild(row);
+                currentTime = this.getNextTimeSlot(currentTime, this.interval);
             }
 
-            timeSlotsTable.appendChild(row);
-            currentTime = this.getNextTimeSlot(currentTime, this.interval);
+            this.timeSlots.appendChild(timeSlotsTable);
         }
-        
-        this.timeSlots.appendChild(timeSlotsTable);
+        else {
+            const targetDate = new Date(this.displayDate);
+            const year = targetDate.getFullYear();
+            const month = targetDate.getMonth();
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const startDay = firstDay.getDay();
+            const daysInMonth = lastDay.getDate();
+
+            
+            const timeSlotsTable = this.createElement('table', { width: '100%', borderCollapse: 'collapse' });
+            
+            const row = this.createElement('tr');
+            for (let i = 0; i < firstDay; i++) {
+                const cell = this.createElement('td', {
+                    position: 'relative',
+                    width: `calc((100% / ${this.resources.length})`,
+                    padding: '4px',
+                    border: '1px solid #e6e6e6',
+                    boxSizing: 'border-box'
+                });
+                row.appendChild(td);
+            }
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                let dateObj = this.formatDate(new Date(currentYear, currentMonth, day));
+                const td = document.createElement('td');
+                td.dataset.date = dateObj;
+                td.style.width = '30px';
+                td.style.height = '30px';
+                td.style.padding = '4px';
+                td.style.border = '1px solid #e6e6e6';
+                td.style.textAlign = 'center';
+                td.style.cursor = 'pointer';
+                if (this.selectedDate && dateObj === this.formatDate(this.selectedDate)) {
+                    td.style.backgroundColor = '#2ca4e9';
+                    td.style.color = '#fff';
+                }
+                td.textContent = day;
+                row.appendChild(td);
+
+                if ((day + firstDayOfMonth) % 7 === 0) {
+                    tbody.appendChild(row);
+                    row = document.createElement('tr');
+                }
+            }
+
+            if(row.querySelectorAll('td').length > 0 && row.querySelectorAll('td').length < 7) {
+                for (let i = row.querySelectorAll('td').length; i < 7; i++) {
+                    const td = document.createElement('td');
+                    td.style.width = '30px';
+                    td.style.height = '30px';
+                    td.style.padding = '4px';
+                    td.style.border = '1px solid #e6e6e6';
+                    row.appendChild(td);
+                }
+            }
+
+            tbody.appendChild(row);
+            table.appendChild(tbody);
+            this.calendarElement.appendChild(table);
+            
+        }
     }
 
     syncScroll() {
@@ -380,29 +502,17 @@ class iCalendar {
 
     drawEvents(events) {
         this.events = events;
-        
-        // Clear all existing events
         this.timeSlots.querySelectorAll('.ievent').forEach(event => event.remove());
-
         if (events) {
             events.forEach(event => {
-                // Find the matching slot using the event's resourceId, targetDate, and startHm
                 const findMatchSlot = this.timeSlots.querySelector(`[data-timeslot="${event.resourceId}_${event.targetDate}_${Math.max(this.startHm, event.startHm)}"]`);
                 if (findMatchSlot) {
-                    // Count how many blocks are already present in the slot to determine the position
                     const blockCount = findMatchSlot.querySelectorAll('.ievent').length;
-                    
-                    // Convert startHm and endHm to minutes since midnight
                     const startMinutes = Math.floor(Math.max(this.startHm, event.startHm) / 100) * 60 + (Math.max(this.startHm, event.startHm) % 100);
                     const endMinutes = Math.floor(Math.min(this.endHm, event.endHm) / 100) * 60 + (Math.min(this.endHm, event.endHm) % 100);
-
-                    // Calculate the duration in minutes
                     const durationMinutes = endMinutes - startMinutes;
-
-                    // Calculate the height based on the number of intervals
                     const height = (Math.ceil(durationMinutes / this.interval) + 1) * 30;
 
-                    // Create a new event block
                     const block = this.createElement('div', {
                         position: 'absolute',
                         background: event.background || '#3788d8',
@@ -415,66 +525,102 @@ class iCalendar {
                         boxSizing: 'border-box',
                         borderRadius: '8px',
                         overflow: 'hidden',
-                        textAlign: 'center',
+                        cursor: 'pointer',
                         opacity: '0.95',
                         zIndex: 1
                     }, 'ievent');
+                    block.innerHTML = (typeof this.eventsTemplate == 'function') ? this.eventsTemplate(event) : `<div>${event.content}</div>`;
+                    block.setAttribute('data-id', event.id || 0);
+                    block.setAttribute('data-targetDate', event.targetDate || '');
+                    block.setAttribute('data-startHm', event.startHm || '');
+                    block.setAttribute('data-endHm', event.endHm || '');
 
-                    // Set the event content
-                    block.innerHTML = `<div>${event.content}</div>`;
+                    block.onclick = () => {
+                        const currentzIndex = block.style.zIndex;
+                        this.timeSlots.querySelectorAll('.ievent').forEach(event => event.style.zIndex = 1);
+                        if (currentzIndex === '1') {
+                            block.style.zIndex = 2;
+                        }
+                        if (typeof this.eventsClick == 'function') {
+                            this.eventsClick(event);
+                        }
+                    };
 
-                    // Append the block to the matching slot
                     findMatchSlot.appendChild(block);
                 }
             });
         }
     }
     
-    refresh() {
-        document.getElementById('icalendar-showdate').innerHTML = this.getDisplayDate();
-        this.setHeader();
-        this.setLeft();
-        this.setSlots();
-        this.drawEvents(this.events);
+    getPrevNextMonth(date, offset) {
+        const newDate = new Date(date);
+        newDate.setMonth(newDate.getMonth() + offset);
+        return newDate.toISOString().split('T')[0];
     }
+    
+    getMonthStartEnd(date) {
+        const targetDate = new Date(date);
+        const startOfMonth = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
+        const endOfMonth = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0);
+        const formatDate = (date) => {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
 
+        return {
+            start: formatDate(startOfMonth),
+            end: formatDate(endOfMonth)
+        };
+    }
+    
     getYmd(date, included_week) {
-        // Convert the localized time back to a Date object
         const hongKongDate = new Date(date);
-
-        // Define config to format the date including the weekday
-        // Location code: en-US or zh-HK
         const formatter = new Intl.DateTimeFormat(((this.lang === 'zh')?'zh-HK':'en-US'), {
             timeZone: 'Asia/Hong_Kong',
             year: 'numeric',
             month: '2-digit',
             day: '2-digit',
-            weekday: 'short' // Add weekday to display day of the week
+            weekday: 'short'
         });
-
-        // Extract the date parts including the weekday
+        
         const parts = formatter.formatToParts(hongKongDate);
         const year = parts.find(part => part.type === 'year').value;
         const month = parts.find(part => part.type === 'month').value;
         const day = parts.find(part => part.type === 'day').value;
         const weekday = parts.find(part => part.type === 'weekday').value.replace('星期', '').replace('週', '');  
         
-        if(included_week) {
-            return `${year}-${month}-${day} (${weekday})`;
-            
+        if(this.displayMode == 'month') {
+            return `${year}/${month}`;
         }
         else {
-            return `${year}-${month}-${day}`;
+            if(included_week) {
+                return `${year}-${month}-${day} (${weekday})`;
+            }
+            else {
+                return `${year}-${month}-${day}`;
+            }
         }
     }
     
-    // calculate the next timeslot and handle minute overflow
     getNextTimeSlot(hm, interval) {
         let nextHm = hm + interval;
         if (nextHm % 100 >= 60) {
             nextHm = (Math.floor(nextHm / 100) + 1) * 100 + (nextHm % 100 - 60);
         }
         return nextHm;
+    }
+    
+    fetchData(url, callback) {
+        fetch(url).then(response => response.json()).then(data => {
+            if (typeof callback == 'function') {
+                callback(data);
+            }
+        }).catch(error => {
+            console.error('Error fetching data:', error);
+            return false;
+        });
     }
 }
     
@@ -485,7 +631,7 @@ const resources = [
     { id: 2, name: '會議室 B' },
     { id: 3, name: '會議室 C' },
     { id: 4, name: '會議室 D' },
-    { id: 5, name: '會議室 E' }
+    /*{ id: 5, name: '會議室 E' }*/
 ];
 
 const events = [
@@ -496,8 +642,27 @@ const events = [
     { resourceId: 1, targetDate: '2024-09-03', startHm: 915, endHm: 1045, content: '09:15 ~ 10:45', background: '#4C7B96' },
     { resourceId: 2, targetDate: '2024-09-03', startHm: 1000, endHm: 1430, content: '10:00 ~ 14:30' },
 ];
-const icalendar = new iCalendar({ displayMode: 'week', date: '2024-09-03', startHm: 800, endHm: 2200, interval: 5, maxHeight: 680, lang: 'zh' });
+const icalendar = new iCalendar({
+    lang: 'zh',
+    displayMode: 'month', 
+    date: '2024-09-02', 
+    startHm: 800, 
+    endHm: 2200, 
+    interval: 5, 
+    maxHeight: 680,
+    resources: 'http://localhost/mylib/testsource.php?index=1',
+    events: 'http://localhost/mylib/testsource.php?index=2',
+    eventsTemplate: function(data) {
+        
+        return 'T:' + data['content'];
+    },
+    eventsClick: function(data) {
+        console.log(data);
+        
+    }
+});
 icalendar.init(resources, events);
+console.log(icalendar.getMonthStartEnd('2024-02-15'));
 </script>
 </body>
 </html>
