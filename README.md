@@ -17,5 +17,26 @@ const events = [
     { resourceId: 1, targetDate: '2024-09-03', startHm: 915, endHm: 1045, content: '09:15 ~ 10:45', background: '#4C7B96' },
     { resourceId: 2, targetDate: '2024-09-03', startHm: 1000, endHm: 1430, content: '10:00 ~ 14:30' },
 ];
-const icalendar = new iCalendar({ displayMode: 'week', date: '2024-09-03', startHm: 800, endHm: 2200, interval: 5, maxHeight: 680, lang: 'zh' });
+
+const icalendar = new iCalendar({
+    lang: 'zh',
+    displayMode: 'week', 
+    date: '2024-09-02', 
+    startHm: 800, 
+    endHm: 2200, 
+    interval: 5, 
+    maxHeight: 680,
+    resources: 'http://localhost/mylib/testsource.php?index=1',
+    events: 'http://localhost/mylib/testsource.php?index=2',
+    eventsTemplate: function(data) {
+        return 'T:' + data['content'];
+    },
+    eventsClick: function(data) {
+        console.log(data);
+    },
+    extraParas: 
+    {
+        resource_id: 1 
+    }
+});
 icalendar.init(resources, events);
