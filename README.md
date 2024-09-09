@@ -1,5 +1,5 @@
 # iCalendar
-iCalendar is a simple library that allows you to create calendar events, including month, week, and day display modes
+iCalendar is a simple library that allows you to create calendar events, including month, week, and day display modes.
 
     const resources = [
         { id: 1, name: '會議室 A' },
@@ -18,7 +18,7 @@ iCalendar is a simple library that allows you to create calendar events, includi
         { resourceId: 2, targetDate: '2024-09-03', startHm: 1000, endHm: 1430, content: '10:00 ~ 14:30' },
     ];
     
-    const icalendar = new iCalendar({
+    const iCalendarObj = new iCalendar({
         lang: 'zh',
         displayMode: 'week', 
         date: '2024-09-02', 
@@ -39,4 +39,4 @@ iCalendar is a simple library that allows you to create calendar events, includi
             resource_id: 1 
         }
     });
-    icalendar.init(resources, events);
+    iCalendarObj.init(resources, events);
