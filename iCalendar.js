@@ -97,9 +97,7 @@ class iCalendar {
     }
 
     renderControls() {
-        const controlsTable = this.createElement('table', {
-            width: '100%'
-        });
+        const controlsTable = this.createElement('table', { width: '100%' });
         const row = this.createElement('tr');
         const leftCell = this.createControlsLeftCell();
         const centerCell = this.createControlsCenterCell();
@@ -268,13 +266,11 @@ class iCalendar {
         this.selfObj.appendChild(body);
     }
 
-    createElement(tag, styles = {}, className = '') {
-        const element = document.createElement(tag);
-        if (className) {
-            element.className = className;
-        }
-        Object.assign(element.style, styles);
-        return element;
+    createElement(tag, styles = {}, className) {
+        const el = document.createElement(tag);
+        if (className) el.className = className;
+        Object.assign(el.style, styles);
+        return el;
     }
 
     setHeader() {
@@ -685,7 +681,7 @@ class iCalendar {
         const weekday = parts.find(part => part.type === 'weekday').value.replace('星期', '').replace('週', '');
 
         if (format == 'month') {
-            return `${year}/${month}`;
+            return (this.lang === 'zh')? `${month}月/${year}` : `${month}/${year}`;
         } else {
             if (format == 'week') {
                 return `${year}-${month}-${day} (${weekday})`;
