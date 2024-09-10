@@ -11,6 +11,9 @@ class iCalendar {
         this.interval = config.interval || 5;
         this.maxHeight = config.maxHeight || 'none';
 
+        this.resources = null;
+        this.events = null;
+        
         this.resources_url = config.resources || false;
         this.no_resources = false;
         this.events_url = config.events || false;
@@ -23,6 +26,7 @@ class iCalendar {
     init(resources, events) {
         this.selfObj = document.getElementById(this.elementID);
         this.selfObj.style.position = 'relative';
+        this.selfObj.style.background = '#fff';
         this.selfObj.style.fontFamily = 'Arial, sans-serif';
         this.selfObj.style.fontSize = '13px';
         this.selfObj.style.border = '1px solid #e6e6e6';
@@ -296,16 +300,33 @@ class iCalendar {
                 borderCollapse: 'collapse'
             });
             const headerRow = this.createElement('tr');
-            this.resources.forEach((resource, index) => {
-                if (this.displayMode === 'week') {
-                    const startOfWeek = new Date(this.displayDate);
-                    for (let w = 0; w < 7; w++) {
-                        const day = new Date(startOfWeek);
-                        day.setDate(startOfWeek.getDate() + w);
+            if(this.resources) {
+                this.resources.forEach((resource, index) => {
+                    if (this.displayMode === 'week') {
+                        const startOfWeek = new Date(this.displayDate);
+                        for (let w = 0; w < 7; w++) {
+                            const day = new Date(startOfWeek);
+                            day.setDate(startOfWeek.getDate() + w);
+                            const dayCell = this.createElement('th', {
+                                position: 'relative',
+                                background: '#f6f6f6',
+                                width: `calc((100% - 60px) / ${(this.resources.length * 7)})`,
+                                minWidth: '180px',
+                                height: '46px',
+                                padding: '4px',
+                                textAlign: 'center',
+                                border: '1px solid #e6e6e6',
+                                boxSizing: 'border-box',
+                                textAlign: 'center'
+                            });
+                            dayCell.innerHTML = (resource.id) ? `${resource.name}<br/><small>` + this.getYmd(day, 'week') + `</small>` : `${this.getYmd(day, 'week')}`;
+                            headerRow.appendChild(dayCell);
+                        }
+                    } else if (this.displayMode === 'day') {
                         const dayCell = this.createElement('th', {
                             position: 'relative',
                             background: '#f6f6f6',
-                            width: `calc((100% - 60px) / ${(this.resources.length * 7)})`,
+                            width: `calc((100% - 60px) / ${this.resources.length})`,
                             minWidth: '180px',
                             height: '46px',
                             padding: '4px',
@@ -314,26 +335,11 @@ class iCalendar {
                             boxSizing: 'border-box',
                             textAlign: 'center'
                         });
-                        dayCell.innerHTML = (resource.id) ? `${resource.name}<br/><small>` + this.getYmd(day, 'week') + `</small>` : `${this.getYmd(day, 'week')}`;
+                        dayCell.innerHTML = (resource.id) ? `${resource.name}` : (this.lang === 'zh' ? '今天' : 'Today');
                         headerRow.appendChild(dayCell);
                     }
-                } else if (this.displayMode === 'day') {
-                    const dayCell = this.createElement('th', {
-                        position: 'relative',
-                        background: '#f6f6f6',
-                        width: `calc((100% - 60px) / ${this.resources.length})`,
-                        minWidth: '180px',
-                        height: '46px',
-                        padding: '4px',
-                        textAlign: 'center',
-                        border: '1px solid #e6e6e6',
-                        boxSizing: 'border-box',
-                        textAlign: 'center'
-                    });
-                    dayCell.innerHTML = (resource.id) ? `${resource.name}` : (this.lang === 'zh' ? '今天' : 'Today');
-                    headerRow.appendChild(dayCell);
-                }
-            });
+                });
+            }
 
             headerTable.appendChild(headerRow);
             this.fixedHeader.appendChild(headerTable);
@@ -732,7 +738,7 @@ class iCalendar {
                 callback(data);
             }
         }).catch(error => {
-            console.error('Error fetching data:', error);
+            console.log('Error fetching data:', error);
             return false;
         });
     }
