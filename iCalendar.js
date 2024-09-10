@@ -97,7 +97,9 @@ class iCalendar {
     }
 
     renderControls() {
-        const controlsTable = this.createElement('table', { width: '100%' });
+        const controlsTable = this.createElement('table', {
+            width: '100%'
+        });
         const row = this.createElement('tr');
         const leftCell = this.createControlsLeftCell();
         const centerCell = this.createControlsCenterCell();
@@ -578,7 +580,7 @@ class iCalendar {
                             opacity: '0.95',
                             zIndex: 1
                         }, 'ievent');
-                        block.innerHTML = (typeof this.eventsTemplate == 'function') ? this.eventsTemplate(event) : `<div>${((event.content) ? event.content : (formatTime(event.startHm) + ` ~ ` + formatTime(event.endHm)))}</div>`;
+                        block.innerHTML = (typeof this.eventsTemplate === 'function') ? this.eventsTemplate(event) : `<div>${((event.content) ? event.content : (formatTime(event.startHm) + ` ~ ` + formatTime(event.endHm)))}</div>`;
                         block.setAttribute('data-id', event.id || 0);
                         block.setAttribute('data-targetDate', event.targetDate || '');
                         block.setAttribute('data-startHm', event.startHm || '');
@@ -590,7 +592,7 @@ class iCalendar {
                             if (currentzIndex === '1') {
                                 block.style.zIndex = 2;
                             }
-                            if (typeof this.eventsClick == 'function') {
+                            if (typeof this.eventsClick === 'function') {
                                 this.eventsClick(event);
                             }
                         };
@@ -629,7 +631,7 @@ class iCalendar {
                             if (currentzIndex === '1') {
                                 block.style.zIndex = 2;
                             }
-                            if (typeof this.eventsClick == 'function') {
+                            if (typeof this.eventsClick === 'function') {
                                 this.eventsClick(event);
                             }
                         };
@@ -680,10 +682,10 @@ class iCalendar {
         const day = parts.find(part => part.type === 'day').value;
         const weekday = parts.find(part => part.type === 'weekday').value.replace('星期', '').replace('週', '');
 
-        if (format == 'month') {
-            return (this.lang === 'zh')? `${month}月/${year}` : `${month}/${year}`;
+        if (format === 'month') {
+            return (this.lang === 'zh') ? `${month}月/${year}` : `${month}/${year}`;
         } else {
-            if (format == 'week') {
+            if (format === 'week') {
                 return `${year}-${month}-${day} (${weekday})`;
             } else {
                 return `${year}-${month}-${day}`;
@@ -726,7 +728,7 @@ class iCalendar {
         }
 
         fetch(fullUrl).then(response => response.json()).then(data => {
-            if (typeof callback == 'function') {
+            if (typeof callback === 'function') {
                 callback(data);
             }
         }).catch(error => {
