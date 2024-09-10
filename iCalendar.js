@@ -32,7 +32,7 @@ class iCalendar {
         this.selfObj.style.border = '1px solid #e6e6e6';
         this.selfObj.style.boxSizing = 'border-box';
         this.selfObj.style.overflow = 'hidden';
-        ['.fixed-corner', '.fixed-header', '.fixed-left', '.timeSlots'].forEach(selector => {
+        ['.fixedCorner', '.fixedHeader', '.fixedLeft', '.timeSlots'].forEach(selector => {
             this.selfObj.querySelectorAll(selector).forEach(el => el.remove());
         });
 
@@ -359,7 +359,7 @@ class iCalendar {
                     padding: '4px',
                     textAlign: 'center',
                     border: '1px solid #e6e6e6',
-                    boxSizing: 'border-box',
+                    boxSizing: 'border-box'
                 });
                 dayCell.textContent = day;
                 headerRow.appendChild(dayCell);
@@ -368,6 +368,11 @@ class iCalendar {
             headerTable.appendChild(headerRow);
             this.fixedHeader.appendChild(headerTable);
         }
+        
+        const calcHeight = this.selfObj.querySelector('.fixedHeader').offsetHeight;
+        this.fixedCorner.style.height = calcHeight+'px';
+        this.fixedLeft.style.top = calcHeight+'px';
+        this.timeSlots.style.marginTop = calcHeight+'px';
     }
 
     setLeft() {
@@ -525,7 +530,6 @@ class iCalendar {
 
             timeSlotsTable.appendChild(row);
             this.timeSlots.appendChild(timeSlotsTable);
-
         }
     }
 
