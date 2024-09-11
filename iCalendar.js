@@ -715,7 +715,7 @@ class iCalendar {
         let fullUrl = url;
 
         if (!this.extraParas) {
-            this.extraParas = [];
+            this.extraParas = {};
         }
         if (this.displayMode === 'month') {
             const minMaxDate = this.getMonthStartEnd(this.displayDate);
