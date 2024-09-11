@@ -589,7 +589,7 @@ class iCalendar {
                             cursor: 'pointer',
                             opacity: '0.95',
                             zIndex: 1
-                        }, 'ievent');
+                        }, ('ievent ' + this.displayMode));
                         block.innerHTML = (typeof this.eventsTemplate === 'function') ? this.eventsTemplate(event) : `<div>${((event.content) ? event.content : (formatTime(event.startHm) + ` ~ ` + formatTime(event.endHm)))}</div>`;
                         block.setAttribute('data-id', event.id || 0);
                         block.setAttribute('data-targetDate', event.targetDate || '');
@@ -628,7 +628,7 @@ class iCalendar {
                             cursor: 'pointer',
                             opacity: '0.95',
                             zIndex: 1
-                        }, 'ievent');
+                        }, ('ievent ' + this.displayMode));
                         block.innerHTML = `<div>${(formatTime(event.startHm) + ` ~ ` + formatTime(event.endHm))}</div>`;
                         block.setAttribute('data-id', event.id || 0);
                         block.setAttribute('data-targetDate', event.targetDate || '');
@@ -730,7 +730,7 @@ class iCalendar {
             this.extraParas['startDate'] = this.getYmd(this.displayDate);
             this.extraParas['endDate'] = this.getYmd(this.displayDate);
         }
-
+        
         if (this.extraParas) {
             const queryParams = new URLSearchParams(this.extraParas).toString();
             const separator = url.includes('?') ? '&' : '?';
